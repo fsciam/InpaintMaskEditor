@@ -6,6 +6,7 @@ import copy
 class LiveSketcher:
     def __init__(self, windowname, image):
         self.prev_pt = None
+        self.enableDrawing=False
         self.windowname = windowname
         self.dests = [image.copy(),np.zeros(image.shape[:2],np.uint8)]
         self.steps=[]
@@ -25,7 +26,7 @@ class LiveSketcher:
 
     def on_mouse(self, event, x, y, flags, param):
         pt = (x, y)
-        if event == cv.EVENT_LBUTTONDOWN:
+        if event == cv.EVENT_LBUTTONDOWN and self.enableDrawing:
             if self.prev_pt == None:
                 print("Saving")
                 self.steps.append(copy.deepcopy(self.dests))
@@ -38,7 +39,7 @@ class LiveSketcher:
         if self.prev_pt and flags & cv.EVENT_FLAG_LBUTTON:
 
             for dst in self.dests:
-                cv.line(dst, self.prev_pt, pt, (255,255,255), 5)
+                cv.line(dst, self.prev_pt, pt, (255,255,255), cv.getTrackbarPos('Line width', self.windowname))
             self.prev_pt = pt
             self.show()
 
@@ -49,16 +50,18 @@ def photo_restoration(image_path):
     if image is not None:
 
         sketch = LiveSketcher("Original", image)
-        cv.createTrackbar("InPaint radius","Original",0,20,lambda val : None)
-        cv.imshow('Repaired')
+        cv.createTrackbar("Line width","Original",2,20,lambda val : None)
+
         while True:
             ch = cv.waitKey()
             if ch == 27:
                 break
-            elif ch==ord('z'):
+            if ch==ord('z'):
                 sketch.undoLast()
-            elif ch==ord('r'):
-                result = cv.inpaint(image, sketch.dests[1], cv.getTrackbarPos("InPaint radius","Original"), cv.INPAINT_TELEA)
+            if ch==ord('l'):
+                sketch.enableDrawing=not sketch.enableDrawing
+            if ch==ord('r'):
+                result = cv.inpaint(image, sketch.dests[1], 3, cv.INPAINT_TELEA)
                 cv.imshow('Repaired', result)
         cv.destroyAllWindows()
     else:
